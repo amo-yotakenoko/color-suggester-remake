@@ -1,25 +1,59 @@
-import logo from './logo.svg';
-import './App.css';
+import { useRef, useState } from "react";
+import ImageSegmentClothes from "./imageSegmentClothes";
 
-function App() {
+export default function App() {
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const [maskAlpha, setMaskAlpha] = useState(0.6); // Default mask alpha
+  const [confidenceThreshold, setConfidenceThreshold] = useState(0.1); // Default confidence threshold
+
+  const handleMaskAlphaChange = (e) => {
+    setMaskAlpha(parseFloat(e.target.value));
+  };
+
+  const handleConfidenceThresholdChange = (e) => {
+    setConfidenceThreshold(parseFloat(e.target.value));
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div>
+      <video
+        ref={videoRef}
+        width={640}
+        height={480}
+        style={{ display: "none" }}
+      />
+      <canvas ref={canvasRef} width={640} height={480} />
+      <div>
+        <label htmlFor="maskAlpha">Mask Alpha: {maskAlpha.toFixed(1)}</label>
+        <input
+          type="range"
+          id="maskAlpha"
+          min="0"
+          max="1"
+          step="0.1"
+          value={maskAlpha}
+          onChange={handleMaskAlphaChange}
+        />
+      </div>
+      <div>
+        <label htmlFor="confidenceThreshold">Confidence Threshold: {confidenceThreshold.toFixed(1)}</label>
+        <input
+          type="range"
+          id="confidenceThreshold"
+          min="0"
+          max="1"
+          step="0.1"
+          value={confidenceThreshold}
+          onChange={handleConfidenceThresholdChange}
+        />
+      </div>
+      <ImageSegmentClothes
+        videoRef={videoRef}
+        canvasRef={canvasRef}
+        maskAlpha={maskAlpha}
+        confidenceThreshold={confidenceThreshold}
+      />
     </div>
   );
 }
-
-export default App;
