@@ -95,13 +95,14 @@ const ImageSegmentClothes = ({ videoRef, canvasRef, maskAlpha = 0.6, freqMs = 10
                     out[j] = originalPixels[j];
                     out[j + 1] = originalPixels[j + 1];
                     out[j + 2] = originalPixels[j + 2];
-                    out[j + 3] = Math.floor(maskAlpha * 255); // Use maskAlpha for clothes transparency
+                    out[j + 3] = 255; // Fully opaque for clothes
                   } else {
-                    // Make non-clothes transparent
-                    out[j] = 0;
-                    out[j + 1] = 0;
-                    out[j + 2] = 0;
-                    out[j + 3] = 0;
+                    // Darken original video for non-clothes areas
+                    const darkenFactor = 0.3; // Adjust this value to control darkness
+                    out[j] = originalPixels[j] * darkenFactor;
+                    out[j + 1] = originalPixels[j + 1] * darkenFactor;
+                    out[j + 2] = originalPixels[j + 2] * darkenFactor;
+                    out[j + 3] = Math.floor(maskAlpha * 255); // Apply maskAlpha for transparency
                   }
                 }
                 const imageData = new ImageData(out, mw, mh);
