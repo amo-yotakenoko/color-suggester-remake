@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
 import { extractDominantColorsKMeans } from "./k-means";
+import { colorDistance } from "./colorutil";
 
 // Helper: confidenceMask を Float32Array に変換して返す
 function maskToFloat32Array(confidenceMaskImage) {
@@ -17,14 +18,43 @@ function maskToFloat32Array(confidenceMaskImage) {
   return null;
 }
 
-/**
- * Props:
- *  - videoRef: HTMLVideoElement ref (camera stream)
- *  - canvasRef: HTMLCanvasElement ref (overlay / output)
- *  - maskAlpha: number (0..1) optional - マスクのアルファ
- *  - freqMs: number optional - 推論間隔（ミリ秒）。0で毎フレーム（注意：重い）
- *  - confidenceThreshold: number (0..1) optional - 信頼度しきい値
- */
+let segmenterPromise = null;
+const getSegmenter = async () => {
+  if (!segmenterPromise) {
+    segmenterPromise = (async () => {
+      console.log("モデル初期化");
+      const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+      );
+      const modelUrl =
+        "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite";
+      
+      const videoSegmenter = await ImageSegmenter.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: modelUrl,
+          delegate: "GPU",
+        },
+        outputCategoryMask: false,
+        outputConfidenceMasks: true,
+        runningMode: "VIDEO",
+      });
+
+      const imageSegmenter = await ImageSegmenter.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: modelUrl,
+        },
+        outputCategoryMask: false,
+        outputConfidenceMasks: true,
+        runningMode: "IMAGE",
+      });
+
+      return { videoSegmenter, imageSegmenter };
+    })();
+  }
+  return await segmenterPromise;
+};
+
+
 const ImageSegmentClothes = ({ videoRef, canvasRef, maskAlpha = 0.6, freqMs = 100, confidenceThreshold = 0.5, isCapturing, onCaptureComplete }) => {
   const videoSegmenterRef = useRef(null);
   const imageSegmenterRef = useRef(null);
@@ -36,31 +66,9 @@ const ImageSegmentClothes = ({ videoRef, canvasRef, maskAlpha = 0.6, freqMs = 10
     let mounted = true;
 
     const init = async () => {
-      const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
-      );
-
-      const modelUrl =
-        "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite";
-
-      videoSegmenterRef.current = await ImageSegmenter.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath: modelUrl,
-           delegate: "GPU",
-        },
-        outputCategoryMask: false,
-        outputConfidenceMasks: true,
-        runningMode: "VIDEO",
-      });
-
-      imageSegmenterRef.current = await ImageSegmenter.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath: modelUrl,
-        },
-        outputCategoryMask: false,
-        outputConfidenceMasks: true,
-        runningMode: "IMAGE",
-      });
+      const { videoSegmenter, imageSegmenter } = await getSegmenter();
+      videoSegmenterRef.current = videoSegmenter;
+      imageSegmenterRef.current = imageSegmenter;
 
       try {
         streamRef.current = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -72,15 +80,11 @@ const ImageSegmentClothes = ({ videoRef, canvasRef, maskAlpha = 0.6, freqMs = 10
         console.error("Failed to get user media", e);
       }
     };
-
+console.log("モデル初期化")
     init();
 
     return () => {
       mounted = false;
-      try {
-        videoSegmenterRef.current?.close();
-        imageSegmenterRef.current?.close();
-      } catch (e) {}
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
       }
@@ -203,7 +207,7 @@ const ImageSegmentClothes = ({ videoRef, canvasRef, maskAlpha = 0.6, freqMs = 10
       const fullFrameImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
       // Perform segmentation on the captured frame
-      const res = imageSegmenterRef.current.segment(fullFrameImageData); // Use segment for static image
+      const res = imageSegmenterRef.current.segment(fullFrameImageData);
 
       const CLOTHES_CLASS = 4;
       const clothesConfidenceMask = res.confidenceMasks && res.confidenceMasks[CLOTHES_CLASS];
@@ -212,17 +216,22 @@ const ImageSegmentClothes = ({ videoRef, canvasRef, maskAlpha = 0.6, freqMs = 10
         const mw = clothesConfidenceMask.width || video.videoWidth;
         const mh = clothesConfidenceMask.height || video.videoHeight;
         const maskArray = maskToFloat32Array(clothesConfidenceMask);
-
+        const colors = [];
         if (maskArray) {
           const clothesImageData = ctx.createImageData(mw, mh);
           for (let i = 0, j = 0; i < maskArray.length; i++, j += 4) {
             const confidence = maskArray[i];
             if (confidence > confidenceThreshold) {
+                  const r = fullFrameImageData.data[j];
+                  const g = fullFrameImageData.data[j + 1];
+                  const b = fullFrameImageData.data[j + 2];
               // Copy original pixel data for clothes
-              clothesImageData.data[j] = fullFrameImageData.data[j];
-              clothesImageData.data[j + 1] = fullFrameImageData.data[j + 1];
-              clothesImageData.data[j + 2] = fullFrameImageData.data[j + 2];
+              clothesImageData.data[j] = r;
+              clothesImageData.data[j + 1] =g;
+              clothesImageData.data[j + 2] = b;
               clothesImageData.data[j + 3] = 255; // Fully opaque
+              if(colors.length<=0 || colorDistance(colors[colors.length-1], [r,g,b])>30)
+               colors.push([r, g, b]);
             } else {
               // Make non-clothes transparent
               clothesImageData.data[j] = 0;
@@ -231,7 +240,8 @@ const ImageSegmentClothes = ({ videoRef, canvasRef, maskAlpha = 0.6, freqMs = 10
               clothesImageData.data[j + 3] = 0;
             }
           }
-          const colors = extractDominantColorsKMeans(clothesImageData); // Extract colors from only clothes
+
+          
           onCaptureComplete(colors);
         }
       } else {

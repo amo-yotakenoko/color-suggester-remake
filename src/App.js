@@ -1,13 +1,15 @@
 import { useRef, useState } from "react";
 import ImageSegmentClothes from "./imageSegmentClothes";
+import MunsellCanvas from "./MunsellCanvas";
 
 export default function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const [maskAlpha, setMaskAlpha] = useState(0.6); // Default mask alpha
-  const [confidenceThreshold, setConfidenceThreshold] = useState(0.1); // Default confidence threshold
+  const [maskAlpha, setMaskAlpha] = useState(0.6);
+  const [confidenceThreshold, setConfidenceThreshold] = useState(0.1);
   const [isCapturing, setIsCapturing] = useState(false);
   const [extractedColors, setExtractedColors] = useState([]);
+  const [resumeKey, setResumeKey] = useState(0);
 
   const handleMaskAlphaChange = (e) => {
     setMaskAlpha(parseFloat(e.target.value));
@@ -19,7 +21,7 @@ export default function App() {
 
   const handleCapture = () => {
     setIsCapturing(true);
-    setExtractedColors([]); // Clear previous colors
+    setExtractedColors([]);
   };
 
   const handleCaptureComplete = (colors) => {
@@ -27,62 +29,89 @@ export default function App() {
     setIsCapturing(false);
   };
 
+  const handleResume = () => {
+    setExtractedColors([]);
+    setResumeKey(prevKey => prevKey + 1);
+  };
+
+  const isPaused = extractedColors.length > 0;
+
   return (
-    <div>
-      <video
-        ref={videoRef}
-        width={640}
-        height={480}
-        style={{ display: "none" }}
-      />
-      <canvas ref={canvasRef} width={640} height={480} />
-      <div>
-        <label htmlFor="maskAlpha">Mask Alpha: {maskAlpha.toFixed(2)}</label>
-        <input
-          type="range"
-          id="maskAlpha"
-          min="0"
-          max="1"
-          step="0.01"
-          value={maskAlpha}
-          onChange={handleMaskAlphaChange}
-        />
-      </div>
-      <div>
-        <label htmlFor="confidenceThreshold">Confidence Threshold: {confidenceThreshold.toFixed(2)}</label>
-        <input
-          type="range"
-          id="confidenceThreshold"
-          min="0"
-          max="1"
-          step="0.01"
-          value={confidenceThreshold}
-          onChange={handleConfidenceThresholdChange}
-        />
-      </div>
-      <button onClick={handleCapture} disabled={isCapturing}>
-        {isCapturing ? "Capturing..." : "Capture Colors"}
-      </button>
-      {extractedColors.length > 0 && (
-        <div>
-          <h2>Extracted Colors:</h2>
-          <div style={{ display: 'flex' }}>
-            {extractedColors.map((color, index) => (
-              <div
-                key={index}
-                style={{
-                  backgroundColor: `rgb(${color})`,
-                  width: '50px',
-                  height: '50px',
-                  margin: '5px',
-                  border: '1px solid #fff',
-                }}
-              />
-            ))}
-          </div>
+    <div className="container-fluid vh-100 d-flex flex-column bg-dark text-light p-4">
+      <h1 className="text-center mb-4">服色抽出</h1>
+      <div className="row flex-grow-1">
+        <div className="col-md-7 d-flex flex-column align-items-center justify-content-center">
+          <MunsellCanvas />
         </div>
-      )}
+        <div className="col-md-5 d-flex flex-column">
+          <div className="d-flex flex-column align-items-center justify-content-center mb-4">
+            <video
+              ref={videoRef}
+              width={640}
+              height={480}
+              style={{ display: "none" }}
+            />
+            <canvas ref={canvasRef} className="img-fluid rounded shadow-lg" width={640} height={480} />
+          </div>
+          <div className="mb-4 p-4 bg-secondary rounded">
+            <h2 className="h4">設定</h2>
+            <div className="form-group">
+              <label htmlFor="maskAlpha">マスクの透明度: {maskAlpha.toFixed(2)}</label>
+              <input
+                type="range"
+                id="maskAlpha"
+                className="form-control-range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={maskAlpha}
+                onChange={handleMaskAlphaChange}
+              />
+            </div>
+            <div className="form-group mt-3">
+              <label htmlFor="confidenceThreshold">信頼度のしきい値: {confidenceThreshold.toFixed(2)}</label>
+              <input
+                type="range"
+                id="confidenceThreshold"
+                className="form-control-range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={confidenceThreshold}
+                onChange={handleConfidenceThresholdChange}
+              />
+            </div>
+          </div>
+          <button 
+            onClick={isPaused ? handleResume : handleCapture} 
+            className={`btn ${isPaused ? 'btn-success' : 'btn-primary'} btn-lg w-100 mb-4`}
+            disabled={isCapturing}
+          >
+            {isCapturing ? "抽出中..." : (isPaused ? "再開" : "色を抽出")}
+          </button>
+          {extractedColors.length > 0 && (
+            <div className="p-4 bg-secondary rounded flex-grow-1">
+              <h2 className="h4">抽出された色</h2>
+              <div className="d-flex flex-wrap justify-content-center">
+                {extractedColors.map((color, index) => (
+                  <div
+                    key={index}
+                    className="rounded-circle m-2 shadow"
+                    style={{
+                      backgroundColor: `rgb(${color})`,
+                      width: '60px',
+                      height: '60px',
+                      border: '2px solid #fff',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
       <ImageSegmentClothes
+        key={resumeKey}
         videoRef={videoRef}
         canvasRef={canvasRef}
         maskAlpha={maskAlpha}

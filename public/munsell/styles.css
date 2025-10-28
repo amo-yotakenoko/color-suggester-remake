@@ -1,0 +1,73 @@
+.cameraCanvas {
+
+  width: 100%; 
+           height:100%;
+        }
+
+        .newcameraCanvas {
+
+  width: 256px; 
+           height: 256px;
+        }
+        
+.footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+}
+
+ .touchActionDisable{
+   touch-action: none;
+
+ }
+  .scroll{
+      border: 1px solid rgb(37, 197, 144);
+            overflow-y: auto;
+              word-wrap: break-word;
+                width: 200px; /* 正方形のサイズを指定 */
+            height: 200px; /* 正方形のサイズを指定 */
+        }
+
+        .nav-link {
+      border-radius:0 !important;
+    }
+
+    canvas{
+      /* border: 1px solid rgb(0, 0, 0); */
+    }
+
+
+    .sqarediv{
+        height: 256px;
+    }
+
+
+    .colorList{
+    width: 10%;
+    border: 1px solid #999;
+    padding: 10px 20px;
+    margin: 10px;
+    background: #f2f2f2;
+}
+.x-scroll{
+      /* width: 100%; */
+      overflow-x: auto; 
+         white-space: nowrap; 
+    }
+    .fig{
+      background-color: #ffffff;
+    }
+
+       .transparent-background {
+        background: transparent;
+        }
+        .large-text {
+            font-size: 20px; /* 適切なサイズに変更してください */
+            margin: 0;
+        }
+
+         .upmargin {
+      margin-top: 10px; /* 上方向の余白 */
+      margin-bottom: 10px; /* 下方向の余白 */
+  
+    }
