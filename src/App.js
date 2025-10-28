@@ -41,7 +41,7 @@ export default function App() {
       <h1 className="text-center mb-4">服色抽出</h1>
       <div className="row flex-grow-1">
         <div className="col-md-7 d-flex flex-column align-items-center justify-content-center">
-          <MunsellCanvas />
+          <MunsellCanvas extractedColors={extractedColors} />
         </div>
         <div className="col-md-5 d-flex flex-column">
           <div className="d-flex flex-column align-items-center justify-content-center mb-4">
