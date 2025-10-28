@@ -37,25 +37,25 @@ export default function App() {
       />
       <canvas ref={canvasRef} width={640} height={480} />
       <div>
-        <label htmlFor="maskAlpha">Mask Alpha: {maskAlpha.toFixed(1)}</label>
+        <label htmlFor="maskAlpha">Mask Alpha: {maskAlpha.toFixed(2)}</label>
         <input
           type="range"
           id="maskAlpha"
           min="0"
           max="1"
-          step="0.1"
+          step="0.01"
           value={maskAlpha}
           onChange={handleMaskAlphaChange}
         />
       </div>
       <div>
-        <label htmlFor="confidenceThreshold">Confidence Threshold: {confidenceThreshold.toFixed(1)}</label>
+        <label htmlFor="confidenceThreshold">Confidence Threshold: {confidenceThreshold.toFixed(2)}</label>
         <input
           type="range"
           id="confidenceThreshold"
           min="0"
           max="1"
-          step="0.1"
+          step="0.01"
           value={confidenceThreshold}
           onChange={handleConfidenceThresholdChange}
         />
