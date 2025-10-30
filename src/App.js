@@ -5,6 +5,7 @@ import ExtractedColorsView from "./ExtractedColorsView";
 import ProgressBar from 'react-bootstrap/ProgressBar';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { extractDominantColorsKMeans } from "./k-means";
+import BeautyScoreView from "./BeautyScoreView"; // 追加
 
 export default function App() {
   const videoRef = useRef(null);
@@ -120,6 +121,7 @@ export default function App() {
           </button>
           {isCapturing && <ProgressBar now={progress * 100} label={`${Math.round(progress * 100)}%`} className="mb-4" />}
           <ExtractedColorsView colors={clusteredColors} /> {/* clusteredColors を渡す */}
+          <BeautyScoreView clusteredColors={clusteredColors} /> {/* BeautyScoreView を追加 */}
         </div>
       </div>
       <ImageSegmentClothes
