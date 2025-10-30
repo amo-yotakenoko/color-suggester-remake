@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import { FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
-import { extractDominantColorsKMeans } from "./k-means";
 import { colorDistance } from "./colorutil";
 
 // Helper: confidenceMask を Float32Array に変換して返す
@@ -55,7 +54,7 @@ const getSegmenter = async () => {
 };
 
 
-const ImageSegmentClothes = ({ videoRef, canvasRef, maskAlpha = 0.6, freqMs = 100, confidenceThreshold = 0.5, isCapturing, onCaptureComplete }) => {
+const ImageSegmentClothes = ({ videoRef, canvasRef, maskAlpha = 0.6, freqMs = 100, confidenceThreshold = 0.5, isCapturing, setExtractedColors, onCaptureFinished }) => {
   const videoSegmenterRef = useRef(null);
   const imageSegmenterRef = useRef(null);
   const streamRef = useRef(null);
@@ -192,65 +191,88 @@ console.log("モデル初期化")
 
   // Handle capture mode
   useEffect(() => {
-    if (isCapturing && streamRef.current && videoRef.current && canvasRef.current && videoSegmenterRef.current && imageSegmenterRef.current) {
-      captureModeRef.current = true;
-      streamRef.current.getTracks().forEach((t) => t.stop()); // Stop camera
+    const process = async () => {
+      if (isCapturing && streamRef.current && videoRef.current && canvasRef.current && videoSegmenterRef.current && imageSegmenterRef.current) {
+        captureModeRef.current = true;
+        streamRef.current.getTracks().forEach((t) => t.stop()); // Stop camera
 
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext("2d");
 
-      // Draw current frame to canvas to get ImageData
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const fullFrameImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        // Draw current frame to canvas to get ImageData
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const fullFrameImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-      // Perform segmentation on the captured frame
-      const res = imageSegmenterRef.current.segment(fullFrameImageData);
+        // Perform segmentation on the captured frame
+        const res = imageSegmenterRef.current.segment(fullFrameImageData);
 
-      const CLOTHES_CLASS = 4;
-      const clothesConfidenceMask = res.confidenceMasks && res.confidenceMasks[CLOTHES_CLASS];
+        const CLOTHES_CLASS = 4;
+        const clothesConfidenceMask = res.confidenceMasks && res.confidenceMasks[CLOTHES_CLASS];
 
-      if (clothesConfidenceMask) {
-        const mw = clothesConfidenceMask.width || video.videoWidth;
-        const mh = clothesConfidenceMask.height || video.videoHeight;
-        const maskArray = maskToFloat32Array(clothesConfidenceMask);
-        const colors = [];
-        if (maskArray) {
-          const clothesImageData = ctx.createImageData(mw, mh);
-          for (let i = 0, j = 0; i < maskArray.length; i++, j += 4) {
-            const confidence = maskArray[i];
-            if (confidence > confidenceThreshold) {
-                  const r = fullFrameImageData.data[j];
-                  const g = fullFrameImageData.data[j + 1];
-                  const b = fullFrameImageData.data[j + 2];
-              // Copy original pixel data for clothes
-              clothesImageData.data[j] = r;
-              clothesImageData.data[j + 1] =g;
-              clothesImageData.data[j + 2] = b;
-              clothesImageData.data[j + 3] = 255; // Fully opaque
-              if(colors.length<=0 || colorDistance(colors[colors.length-1], [r,g,b])>30)
-               colors.push([r, g, b]);
-            } else {
-              // Make non-clothes transparent
-              clothesImageData.data[j] = 0;
-              clothesImageData.data[j + 1] = 0;
-              clothesImageData.data[j + 2] = 0;
-              clothesImageData.data[j + 3] = 0;
-            }
+        if (clothesConfidenceMask) {
+          const mw = clothesConfidenceMask.width || video.videoWidth;
+          const mh = clothesConfidenceMask.height || video.videoHeight;
+          const maskArray = maskToFloat32Array(clothesConfidenceMask);
+          const localColors = [];
+            setExtractedColors(localColors);
+          if (maskArray) {
+            const clothesImageData = ctx.createImageData(mw, mh);
+            const interval =parseInt((canvas.width * canvas.height)/1000 ) ; // Sample approx 1000 pixels
+            console.log(`Sampling interval: ${interval}`);
+            const processMask = () => new Promise(resolve => {
+              let i = 0;
+              const processChunk = () => {
+                const chunkSize = 50; // Process 50k pixels at a time
+                const limit = Math.min(i + chunkSize, maskArray.length);
+                console.log(`Processing ${i}/${maskArray.length}`);
+                for (; i < limit; i += interval) {
+                  const j = i * 4;
+                  const confidence = maskArray[i];
+                  if (confidence > confidenceThreshold) {
+                    const r = fullFrameImageData.data[j];
+                    const g = fullFrameImageData.data[j + 1];
+                    const b = fullFrameImageData.data[j + 2];
+                    // Copy original pixel data for clothes
+                    clothesImageData.data[j] = r;
+                    clothesImageData.data[j + 1] = g;
+                    clothesImageData.data[j + 2] = b;
+                    clothesImageData.data[j + 3] = 255; // Fully opaque
+                    // if (localColors.length <= 0 || colorDistance(localColors[localColors.length - 1], [r, g, b]) > 30){
+                      const newColor = [r, g, b];
+                      localColors.push(newColor);
+                      setExtractedColors(localColors);
+                    // }
+                  } 
+                }
+                if (i < maskArray.length) {
+                  setTimeout(processChunk, 0);
+                } else {
+                  console.log(`Processing ${maskArray.length}/${maskArray.length}`);
+                  resolve();
+                }
+              }
+              processChunk();
+            });
+
+            await processMask();
+            console.log(`抽出終了色数: ${localColors.length}`);
+            onCaptureFinished();
+          } else {
+            onCaptureFinished();
           }
-
-          
-          onCaptureComplete(colors);
+        } else {
+          onCaptureFinished(); // No clothes detected
         }
-      } else {
-        onCaptureComplete([]); // No clothes detected
       }
     }
-  }, [isCapturing, videoRef, canvasRef, confidenceThreshold, onCaptureComplete]);
+    process();
+  }, [isCapturing ]);
 
   return null;
 };
+
 
 export default ImageSegmentClothes;

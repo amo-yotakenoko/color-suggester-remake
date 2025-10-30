@@ -9,11 +9,12 @@ const MunsellColorSphere = ({ color, hvc }) => {
     const x = Math.sin(rad) * C * 1.5;
     const y = Math.cos(rad) * C * 1.5;
     const z = V * 5 - 20;
+    const threeColor = useMemo(() => new THREE.Color(color), [color]);
 
     return (
         <mesh position={[y, z, x]}>
-            <sphereGeometry args={[0.5, 4, 1]} />
-            <meshBasicMaterial color={color} />
+            <sphereGeometry args={[0.5, 4, 4]} />
+            <meshBasicMaterial color={threeColor} />
         </mesh>
     );
 };
@@ -24,11 +25,13 @@ const ColorCube = ({ color, hvc, size = 1.5, emissive = false }) => {
     const x = Math.sin(rad) * C * 1.5;
     const y = Math.cos(rad) * C * 1.5;
     const z = V * 5 - 20;
+    const threeColor = useMemo(() => new THREE.Color(color), [color]);
+    const emissiveColor = useMemo(() => emissive ? threeColor : new THREE.Color('black'), [emissive, threeColor]);
 
     return (
         <mesh position={[y, z, x]}>
             <boxGeometry args={[size, size, size]} />
-            <meshBasicMaterial color={color} emissive={emissive ? color : 'black'} />
+            <meshStandardMaterial color={threeColor} emissive={emissiveColor} />
         </mesh>
     );
 };
@@ -123,12 +126,17 @@ const SampleColors = ({ munsellData }) => {
 
 const ExtractedColors = ({ extractedColors, munsellData }) => {
     const closestColors = useMemo(() => {
+        console.log('ExtractedColors received:', extractedColors);
         if (!extractedColors || !munsellData) return [];
-        return extractedColors.map(colorStr => {
-            const rgb = colorStr.split(',').map(c => parseInt(c, 10));
+        const mappedColors = extractedColors.map(color => {
+            const rgb = color;
             const closest = findClosestMunsell(rgb, munsellData);
-            return { color: `rgb(${colorStr})`, hvc: closest ? closest.hvc : null };
-        }).filter(item => item.hvc);
+            return { color: `rgb(${rgb.join(',')})`, hvc: closest ? closest.hvc : null };
+        });
+        console.log('Mapped colors:', mappedColors);
+        const filteredColors = mappedColors.filter(item => item.hvc);
+        console.log('Filtered colors:', filteredColors);
+        return filteredColors;
     }, [extractedColors, munsellData]);
 
     return (

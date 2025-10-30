@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import ImageSegmentClothes from "./imageSegmentClothes";
 import MunsellCanvas from "./MunsellCanvas";
+import ExtractedColorsView from "./ExtractedColorsView";
 
 export default function App() {
   const videoRef = useRef(null);
@@ -24,8 +25,7 @@ export default function App() {
     setExtractedColors([]);
   };
 
-  const handleCaptureComplete = (colors) => {
-    setExtractedColors(colors);
+  const onCaptureFinished = () => {
     setIsCapturing(false);
   };
 
@@ -39,11 +39,11 @@ export default function App() {
   return (
     <div className="container-fluid vh-100 d-flex flex-column bg-dark text-light p-4">
       <h1 className="text-center mb-4">服色抽出</h1>
-      <div className="row flex-grow-1">
+      <div className="row flex-grow-1" style={{ minHeight: '0' }}>
         <div className="col-md-7 d-flex flex-column align-items-center justify-content-center">
           <MunsellCanvas extractedColors={extractedColors} />
         </div>
-        <div className="col-md-5 d-flex flex-column">
+        <div className="col-md-5 d-flex flex-column" style={{ minHeight: '0' }}>
           <div className="d-flex flex-column align-items-center justify-content-center mb-4">
             <video
               ref={videoRef}
@@ -54,9 +54,9 @@ export default function App() {
             <canvas ref={canvasRef} className="img-fluid rounded shadow-lg" width={640} height={480} />
           </div>
           <div className="mb-4 p-4 bg-secondary rounded">
-            <h2 className="h4">設定</h2>
+            <h2 className="h4">設定{`${isCapturing}`}</h2>
             <div className="form-group">
-              <label htmlFor="maskAlpha">マスクの透明度: {maskAlpha.toFixed(2)}</label>
+              <label htmlFor="maskAlph">マスクの透明度: {maskAlpha.toFixed(2)}</label>
               <input
                 type="range"
                 id="maskAlpha"
@@ -89,25 +89,7 @@ export default function App() {
           >
             {isCapturing ? "抽出中..." : (isPaused ? "再開" : "色を抽出")}
           </button>
-          {extractedColors.length > 0 && (
-            <div className="p-4 bg-secondary rounded flex-grow-1">
-              <h2 className="h4">抽出された色</h2>
-              <div className="d-flex flex-wrap justify-content-center">
-                {extractedColors.map((color, index) => (
-                  <div
-                    key={index}
-                    className="rounded-circle m-2 shadow"
-                    style={{
-                      backgroundColor: `rgb(${color})`,
-                      width: '60px',
-                      height: '60px',
-                      border: '2px solid #fff',
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+          <ExtractedColorsView colors={extractedColors} />
         </div>
       </div>
       <ImageSegmentClothes
@@ -117,8 +99,11 @@ export default function App() {
         maskAlpha={maskAlpha}
         confidenceThreshold={confidenceThreshold}
         isCapturing={isCapturing}
-        onCaptureComplete={handleCaptureComplete}
+        setExtractedColors={setExtractedColors}
+        onCaptureFinished={onCaptureFinished}
       />
     </div>
   );
 }
+
+
