@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import "./BeautyScoreView.css";
 
 // --- RGB → HVC変換（簡易版、元のXYZtoHVCの代用） ---
 function rgbToHVC([r, g, b]) {

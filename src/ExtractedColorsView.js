@@ -9,36 +9,39 @@ const ExtractedColorsView = ({ colors }) => {
 
   return (
     <div
-      className="bg-secondary rounded shadow-lg p-3 d-flex flex-column"
+      className="h-100 position-relative"
       style={{
-        flex: '1 1 auto',
-        maxHeight: '40vh', // 高さを画面の40%までに制限
         overflow: 'hidden',
+        marginTop: '-20px',  // マンセル色立体に少し重なるように
+        zIndex: 10,  // マンセル色立体の上に表示
       }}
     >
-      <div className="mb-2 flex-shrink-0 text-center">
-        <h2 className="h5 mb-0">抽出された色</h2>
-      </div>
       <div
-        className="flex-grow-1"
+        className="h-100 d-flex justify-content-center align-items-start"
         style={{
           overflowY: 'auto',
-          paddingRight: '4px',
         }}
       >
         <div className="d-flex flex-wrap justify-content-center">
           {colors.map((color, index) => (
             <div
               key={index}
-              className="rounded-circle m-1 shadow-sm"
+              className="position-relative m-1"
               style={{
-                backgroundColor: `rgb(${color})`,
-                width: '40px',
-                height: '40px',
-                border: '1px solid rgba(255,255,255,0.8)',
+                width: '30px',  // サイズを少し小さく
+                height: '30px',
               }}
-              title={`RGB(${color.join(', ')})`}
-            />
+            >
+              <div
+                className="rounded-circle w-100 h-100"
+                style={{
+                  backgroundColor: `rgb(${color})`,
+                  border: '2px solid #fff',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                }}
+                title={`RGB(${color.join(', ')})`}
+              />
+            </div>
           ))}
         </div>
       </div>

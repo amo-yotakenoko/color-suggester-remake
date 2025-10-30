@@ -54,23 +54,23 @@ export default function App() {
   const isPaused = allExtractedColors.length > 0; // 抽出された色があるかどうかで一時停止状態を判断
 
   return (
-    <div className="container-fluid vh-100 d-flex flex-column bg-dark text-light p-4">
-      <h1 className="text-center mb-4">服色抽出</h1>
-      <div className="row flex-grow-1" style={{ minHeight: '0' }}>
-        <div className="col-md-7 d-flex flex-column align-items-center justify-content-center">
-          <MunsellCanvas extractedColors={clusteredColors} /> {/* clusteredColors を渡す */}
-        </div>
-        <div className="col-md-5 d-flex flex-column" style={{ minHeight: '0' }}>
-          <div className="d-flex flex-column align-items-center justify-content-center mb-4">
+    <div className="container-fluid vh-100 d-flex flex-column bg-dark text-light p-2">
+      {/* <h1 className="text-center mb-2">服色抽出</h1> */}
+      <div className="row flex-grow-1 g-2" style={{ minHeight: '0' }}>
+        {/* 左側のカラム（カメラビューと設定） */}
+        <div className="col-6 d-flex flex-column" style={{ height: 'calc(100vh - 80px)' }}>
+          {/* 上部：カメラビュー */}
+          <div className="flex-grow-0" style={{ height: '60%' }}>
             <video
               ref={videoRef}
               width={640}
               height={480}
               style={{ display: "none" }}
             />
-            <canvas ref={canvasRef} className="img-fluid rounded shadow-lg" width={640} height={480} />
+            <canvas ref={canvasRef} className="img-fluid rounded shadow-lg" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
-          <div className="mb-4 p-4 bg-secondary rounded">
+          {/* 下部：設定パネル */}
+          <div className="flex-grow-1 p-2 bg-secondary rounded mt-2" style={{ height: '40%', overflowY: 'auto' }}>
             <h2 className="h4">設定{`${isCapturing}`}</h2>
             <div className="form-group">
               <label htmlFor="maskAlph">マスクの透明度: {maskAlpha.toFixed(2)}</label>
@@ -85,7 +85,7 @@ export default function App() {
                 onChange={handleMaskAlphaChange}
               />
             </div>
-            <div className="form-group mt-3">
+            <div className="form-group mt-2">
               <label htmlFor="confidenceThreshold">信頼度のしきい値: {confidenceThreshold.toFixed(2)}</label>
               <input
                 type="range"
@@ -98,30 +98,41 @@ export default function App() {
                 onChange={handleConfidenceThresholdChange}
               />
             </div>
-            <div className="form-group mt-3"> {/* 色の数設定を追加 */}
+            <div className="form-group mt-2">
               <label htmlFor="numColors">抽出する色の数: {numColors}</label>
               <input
                 type="range"
                 id="numColors"
                 className="form-control-range"
                 min="1"
-                max="10" // 最大値を10に設定
+                max="10"
                 step="1"
                 value={numColors}
                 onChange={(e) => setNumColors(parseInt(e.target.value))}
               />
             </div>
+            <button
+              onClick={isPaused ? handleResume : handleCapture}
+              className={`btn ${isPaused ? 'btn-success' : 'btn-primary'} btn-lg w-100 mt-2`}
+              disabled={isCapturing}
+            >
+              {isCapturing ? "抽出中..." : (isPaused ? "再開" : "色を抽出")}
+            </button>
+            {isCapturing && <ProgressBar now={progress * 100} label={`${Math.round(progress * 100)}%`} className="mt-2" />}
           </div>
-          <button
-            onClick={isPaused ? handleResume : handleCapture}
-            className={`btn ${isPaused ? 'btn-success' : 'btn-primary'} btn-lg w-100 mb-4`}
-            disabled={isCapturing}
-          >
-            {isCapturing ? "抽出中..." : (isPaused ? "再開" : "色を抽出")}
-          </button>
-          {isCapturing && <ProgressBar now={progress * 100} label={`${Math.round(progress * 100)}%`} className="mb-4" />}
-          <ExtractedColorsView colors={clusteredColors} /> {/* clusteredColors を渡す */}
-          <BeautyScoreView clusteredColors={clusteredColors} /> {/* BeautyScoreView を追加 */}
+        </div>
+        
+        {/* 右側のカラム（マンセル色立体、抽出色、美度計算） */}
+        <div className="col-6 d-flex flex-column" style={{ height: 'calc(100vh - 80px)' }}>
+          {/* 上部：マンセル色立体 */}
+          <div className="flex-grow-0 position-relative" style={{ height: '55%' }}>
+            <MunsellCanvas extractedColors={clusteredColors} />
+            <ExtractedColorsView colors={clusteredColors} />
+          </div>
+          {/* 下部：美度計算（スクロール可能） */}
+          <div className="flex-grow-1 mt-2" style={{ height: '45%' }}>
+            <BeautyScoreView clusteredColors={clusteredColors} />
+          </div>
         </div>
       </div>
       <ImageSegmentClothes
