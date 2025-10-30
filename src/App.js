@@ -2,6 +2,8 @@ import { useRef, useState } from "react";
 import ImageSegmentClothes from "./imageSegmentClothes";
 import MunsellCanvas from "./MunsellCanvas";
 import ExtractedColorsView from "./ExtractedColorsView";
+import ProgressBar from 'react-bootstrap/ProgressBar';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 export default function App() {
   const videoRef = useRef(null);
@@ -11,6 +13,7 @@ export default function App() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [extractedColors, setExtractedColors] = useState([]);
   const [resumeKey, setResumeKey] = useState(0);
+  const [progress, setProgress] = useState(0);
 
   const handleMaskAlphaChange = (e) => {
     setMaskAlpha(parseFloat(e.target.value));
@@ -89,6 +92,7 @@ export default function App() {
           >
             {isCapturing ? "抽出中..." : (isPaused ? "再開" : "色を抽出")}
           </button>
+          {isCapturing && <ProgressBar now={progress * 100} label={`${Math.round(progress * 100)}%`} className="mb-4" />} {/* プログレスバーを追加 */}
           <ExtractedColorsView colors={extractedColors} />
         </div>
       </div>
@@ -101,6 +105,7 @@ export default function App() {
         isCapturing={isCapturing}
         setExtractedColors={setExtractedColors}
         onCaptureFinished={onCaptureFinished}
+        onProgress={setProgress} 
       />
     </div>
   );

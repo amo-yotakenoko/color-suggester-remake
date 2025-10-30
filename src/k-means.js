@@ -1,16 +1,4 @@
-export function extractDominantColorsKMeans(imageData, k = 5, maxIterations = 10) {
-  const data = imageData.data;
-  const pixels = [];
-
-  // 1. 画像のピクセルを RGB 配列に変換
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
-    const a = data[i + 3];
-    if (a >= 255) pixels.push([r, g, b]);
-  }
-
+export function extractDominantColorsKMeans(pixels, k = 5, maxIterations = 10) {
   if (pixels.length === 0) return [];
 
   // 2. 初期クラスタ中心をランダムに選ぶ

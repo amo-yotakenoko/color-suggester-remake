@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
 import { colorDistance } from "./colorutil";
+import { extractDominantColorsKMeans } from "./k-means"; // 追加
 
 // Helper: confidenceMask を Float32Array に変換して返す
 function maskToFloat32Array(confidenceMaskImage) {
@@ -54,7 +55,7 @@ const getSegmenter = async () => {
 };
 
 
-const ImageSegmentClothes = ({ videoRef, canvasRef, maskAlpha = 0.6, freqMs = 100, confidenceThreshold = 0.5, isCapturing, setExtractedColors, onCaptureFinished }) => {
+const ImageSegmentClothes = ({ videoRef, canvasRef, maskAlpha = 0.6, freqMs = 100, confidenceThreshold = 0.5, isCapturing, setExtractedColors, onCaptureFinished, onProgress }) => {
   const videoSegmenterRef = useRef(null);
   const imageSegmenterRef = useRef(null);
   const streamRef = useRef(null);
@@ -220,14 +221,14 @@ console.log("モデル初期化")
             setExtractedColors(localColors);
           if (maskArray) {
             const clothesImageData = ctx.createImageData(mw, mh);
-            const interval =parseInt((canvas.width * canvas.height)/1000 ) ; // Sample approx 1000 pixels
+            const interval =parseInt((canvas.width * canvas.height)/500 ) ; // Sample approx 1000 pixels
             console.log(`Sampling interval: ${interval}`);
             const processMask = () => new Promise(resolve => {
               let i = 0;
               const processChunk = () => {
-                const chunkSize = 50; // Process 50k pixels at a time
+                const chunkSize = 500; // Process 50k pixels at a time
                 const limit = Math.min(i + chunkSize, maskArray.length);
-                console.log(`Processing ${i}/${maskArray.length}`);
+                // console.log(`Processing ${i}/${maskArray.length}`);
                 for (; i < limit; i += interval) {
                   const j = i * 4;
                   const confidence = maskArray[i];
@@ -243,9 +244,12 @@ console.log("モデル初期化")
                     // if (localColors.length <= 0 || colorDistance(localColors[localColors.length - 1], [r, g, b]) > 30){
                       const newColor = [r, g, b];
                       localColors.push(newColor);
-                      setExtractedColors(localColors);
+                      setExtractedColors(localColors); // ここでは更新しない
                     // }
                   } 
+                }
+                if (onProgress) {
+                  onProgress(i / maskArray.length);
                 }
                 if (i < maskArray.length) {
                   setTimeout(processChunk, 0);
@@ -259,6 +263,9 @@ console.log("モデル初期化")
 
             await processMask();
             console.log(`抽出終了色数: ${localColors.length}`);
+            // K-means クラスタリングを実行
+            const dominantColors = extractDominantColorsKMeans(localColors, 5); // 5色に制限
+            setExtractedColors(dominantColors.map(colorStr => colorStr.split(',').map(Number))); // setExtractedColors で設定
             onCaptureFinished();
           } else {
             onCaptureFinished();
@@ -269,7 +276,7 @@ console.log("モデル初期化")
       }
     }
     process();
-  }, [isCapturing ]);
+  }, [isCapturing, onProgress]);
 
   return null;
 };
