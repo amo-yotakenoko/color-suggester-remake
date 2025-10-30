@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
 import { colorDistance } from "./colorutil";
-import { extractDominantColorsKMeans } from "./k-means"; // 追加
+// import { extractDominantColorsKMeans } from "./k-means"; // 削除
 
 // Helper: confidenceMask を Float32Array に変換して返す
 function maskToFloat32Array(confidenceMaskImage) {
@@ -55,7 +55,7 @@ const getSegmenter = async () => {
 };
 
 
-const ImageSegmentClothes = ({ videoRef, canvasRef, maskAlpha = 0.6, freqMs = 100, confidenceThreshold = 0.5, isCapturing, setExtractedColors, onCaptureFinished, onProgress }) => {
+const ImageSegmentClothes = ({ videoRef, canvasRef, maskAlpha = 0.6, freqMs = 100, confidenceThreshold = 0.5, isCapturing, setAllExtractedColors, onCaptureFinished, onProgress }) => { // setExtractedColors を setAllExtractedColors に変更
   const videoSegmenterRef = useRef(null);
   const imageSegmenterRef = useRef(null);
   const streamRef = useRef(null);
@@ -217,8 +217,9 @@ console.log("モデル初期化")
           const mw = clothesConfidenceMask.width || video.videoWidth;
           const mh = clothesConfidenceMask.height || video.videoHeight;
           const maskArray = maskToFloat32Array(clothesConfidenceMask);
-          const localColors = [];
-            setExtractedColors(localColors);
+          let localColors = []; // const から let に変更
+          // setExtractedColors(localColors); // ここでは更新しない
+
           if (maskArray) {
             const clothesImageData = ctx.createImageData(mw, mh);
             const interval =parseInt((canvas.width * canvas.height)/500 ) ; // Sample approx 1000 pixels
@@ -244,9 +245,9 @@ console.log("モデル初期化")
                     // if (localColors.length <= 0 || colorDistance(localColors[localColors.length - 1], [r, g, b]) > 30){
                       const newColor = [r, g, b];
                       localColors.push(newColor);
-                      setExtractedColors(localColors); // ここでは更新しない
+                      setAllExtractedColors(localColors); // setAllExtractedColors で更新
                     // }
-                  } 
+                  }
                 }
                 if (onProgress) {
                   onProgress(i / maskArray.length);
@@ -263,20 +264,20 @@ console.log("モデル初期化")
 
             await processMask();
             console.log(`抽出終了色数: ${localColors.length}`);
-            // K-means クラスタリングを実行
-            const dominantColors = extractDominantColorsKMeans(localColors, 5); // 5色に制限
-            setExtractedColors(dominantColors.map(colorStr => colorStr.split(',').map(Number))); // setExtractedColors で設定
+            // K-means クラスタリングを実行と setExtractedColors の呼び出しを削除
+            // const dominantColors = extractDominantColorsKMeans(localColors, 5); // 5色に制限
+            // setExtractedColors(dominantColors.map(colorStr => colorStr.split(',').map(Number))); // setExtractedColors で設定
             onCaptureFinished();
           } else {
             onCaptureFinished();
           }
-        } else {
-          onCaptureFinished(); // No clothes detected
         }
+      } else {
+        onCaptureFinished(); // No clothes detected
       }
     }
     process();
-  }, [isCapturing, onProgress]);
+  }, [isCapturing, onProgress, setAllExtractedColors]); // setAllExtractedColors を依存配列に追加
 
   return null;
 };
