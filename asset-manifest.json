@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/color-suggester-remake/static/css/main.2324f958.css",
-    "main.js": "/color-suggester-remake/static/js/main.f92c385f.js",
+    "main.js": "/color-suggester-remake/static/js/main.7b51a477.js",
     "static/js/453.543e1871.chunk.js": "/color-suggester-remake/static/js/453.543e1871.chunk.js",
     "index.html": "/color-suggester-remake/index.html",
     "main.2324f958.css.map": "/color-suggester-remake/static/css/main.2324f958.css.map",
-    "main.f92c385f.js.map": "/color-suggester-remake/static/js/main.f92c385f.js.map",
+    "main.7b51a477.js.map": "/color-suggester-remake/static/js/main.7b51a477.js.map",
     "453.543e1871.chunk.js.map": "/color-suggester-remake/static/js/453.543e1871.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.2324f958.css",
-    "static/js/main.f92c385f.js"
+    "static/js/main.7b51a477.js"
   ]
 }
