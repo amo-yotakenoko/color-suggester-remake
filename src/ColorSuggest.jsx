@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { calculateBeautyDetails } from './utils/beautyCalculator';
+import { colorDistance } from './colorutil.js';
 
 // fallback 代表色
 const FALLBACK_COLORS = [
@@ -40,11 +41,16 @@ const ColorSuggest = ({ clusteredColors, munsellColors }) => {
   if (!currentBeauty) return null;
 
   return (
-    <div className="mt-4 p-4 rounded" style={{ background: 'linear-gradient(135deg, #2c3e50, #3498db)' }}>
+    <div className="mt-4 p-4 rounded h-100 d-flex flex-column" style={{ background: 'linear-gradient(135deg, #2c3e50, #3498db)' }}>
       <h2 className="h4 text-center mb-3 text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>色の提案</h2>
-      <div className="container">
+      <div className="container flex-grow-1 overflow-auto">
         <div className="row g-3">
-          {suggestions.map((suggestion) => (
+          {suggestions.filter((suggestion, index, self) => {
+            if (index === 0) return true;
+            const prevSuggestion = self[index - 1];
+            const distance = colorDistance(suggestion.rgb, prevSuggestion.rgb);
+            return distance > 15; // しきい値
+          }).map((suggestion) => (
             <div key={suggestion.name} className="col-2">
               <div
                 className="position-relative"
