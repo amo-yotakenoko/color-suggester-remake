@@ -36,25 +36,7 @@ const ColorCube = ({ color, hvc, size = 1.5, emissive = false }) => {
     );
 };
 
-const MunsellColors = () => {
-    const [munsellColors, setMunsellColors] = useState([]);
-
-    useEffect(() => {
-        fetch('munsell/colorcodeToHVC.txt')
-            .then((response) => response.text())
-            .then((text) => {
-                const colors = text.split('\n').map((line) => {
-                    const parts = line.split('\t');
-                    if (parts.length < 4) return null;
-                    return {
-                        hex: parts[0],
-                        hvc: [parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3])],
-                    };
-                }).filter(Boolean);
-                setMunsellColors(colors);
-            });
-    }, []);
-
+const MunsellColors = ({ munsellColors = [] }) => {
     return (
         <>
             {munsellColors.map((color, i) => (
@@ -64,24 +46,12 @@ const MunsellColors = () => {
     );
 };
 
-const findClosestMunsell = (rgb, munsellData) => {
+const findClosestMunsell = (rgb, munsellColors = []) => {
     let closestColor = null;
     let minDistance = Infinity;
 
-    const munsellColors = munsellData.map(line => {
-        const parts = line.split('\t');
-        if (parts.length < 4) return null;
-        const hex = parts[0];
-        const munsellRgb = new THREE.Color(hex).toArray().map(c => c * 255);
-        return {
-            hex,
-            hvc: [parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3])],
-            rgb: munsellRgb
-        };
-    }).filter(Boolean);
-
     munsellColors.forEach(munsellColor => {
-        if (!munsellColor.rgb) return;
+        if (!munsellColor || !munsellColor.rgb) return;
         const distance = Math.sqrt(
             Math.pow(rgb[0] - munsellColor.rgb[0], 2) +
             Math.pow(rgb[1] - munsellColor.rgb[1], 2) +
@@ -149,24 +119,14 @@ const ExtractedColors = ({ extractedColors, munsellData }) => {
 };
 
 
-const MunsellCanvas = ({ extractedColors }) => {
-    const [munsellData, setMunsellData] = useState(null);
-
-    useEffect(() => {
-        fetch('munsell/colorcodeToHVC.txt')
-            .then((response) => response.text())
-            .then((text) => {
-                setMunsellData(text.split('\n'));
-            });
-    }, []);
-
+const MunsellCanvas = ({ extractedColors, munsellColors }) => {
     return (
         <Canvas camera={{ position: [0, 0, 150] }} style={{ width: '100%', height: '100%' }}>
             <ambientLight />
             <pointLight position={[10, 10, 10]} />
-            <MunsellColors />
-            {munsellData && <SampleColors munsellData={munsellData} />}
-            {munsellData && <ExtractedColors extractedColors={extractedColors} munsellData={munsellData} />}
+            <MunsellColors munsellColors={munsellColors || []} />
+            {munsellColors && munsellColors.length > 0 && <SampleColors munsellData={munsellColors} />}
+            {munsellColors && munsellColors.length > 0 && <ExtractedColors extractedColors={extractedColors} munsellData={munsellColors} />}
             <OrbitControls 
                 enableDamping 
                 dampingFactor={0.2} 

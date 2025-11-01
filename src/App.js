@@ -5,7 +5,8 @@ import ExtractedColorsView from "./ExtractedColorsView";
 import ProgressBar from 'react-bootstrap/ProgressBar';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { extractDominantColorsKMeans } from "./k-means";
-import BeautyScoreView from "./BeautyScoreView"; // 追加
+import BeautyScoreView from "./BeautyScoreView";
+import ColorSuggest from "./ColorSuggest";
 
 export default function App() {
   const videoRef = useRef(null);
@@ -18,6 +19,34 @@ export default function App() {
   const [numColors, setNumColors] = useState(5); // 色の数
   const [resumeKey, setResumeKey] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [munsellColors, setMunsellColors] = useState(null);
+
+  useEffect(() => {
+    const base = process.env.PUBLIC_URL || '';
+    fetch(`${base}/munsell/colorcodeToHVC.txt`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Failed to load Munsell data: ${res.status}`);
+        return res.text();
+      })
+      .then((text) => {
+        const parsed = text.split('\n').map((line) => {
+          const parts = line.split('\t');
+          if (parts.length < 4) return null;
+          const hex = parts[0].trim();
+          const hvc = [parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3])];
+          // convert hex to rgb array
+          let hexClean = hex;
+          if (!hexClean.startsWith('#')) hexClean = '#' + hexClean;
+          let num = parseInt(hexClean.slice(1), 16);
+          const r = (num >> 16) & 255;
+          const g = (num >> 8) & 255;
+          const b = num & 255;
+          return { hex: hexClean, hvc, rgb: [r, g, b] };
+        }).filter(Boolean);
+        setMunsellColors(parsed);
+      })
+      .catch((err) => console.error('Error loading munsell in App:', err));
+  }, []);
 
   const handleMaskAlphaChange = (e) => {
     setMaskAlpha(parseFloat(e.target.value));
@@ -123,15 +152,25 @@ export default function App() {
         </div>
         
         {/* 右側のカラム（マンセル色立体、抽出色、美度計算） */}
-        <div className="col-6 d-flex flex-column" style={{ height: 'calc(100vh - 80px)' }}>
+        <div className="col-6 d-flex flex-column" style={{ height: 'calc(100vh - 80px)', gap: '8px' }}>
           {/* 上部：マンセル色立体 */}
-          <div className="flex-grow-0 position-relative" style={{ height: '55%' }}>
-            <MunsellCanvas extractedColors={clusteredColors} />
+          <div style={{ height: '300px', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+              <MunsellCanvas extractedColors={clusteredColors} munsellColors={munsellColors} />
+            </div>
+          </div>
+          {/* 抽出色表示 */}
+          <div style={{ flexShrink: 0 }}>
             <ExtractedColorsView colors={clusteredColors} />
           </div>
-          {/* 下部：美度計算（スクロール可能） */}
-          <div className="flex-grow-1 mt-2" style={{ height: '45%' }}>
+          {/* 下部：美度計算とカラーサジェスト（スクロール可能） */}
+          <div className="flex-grow-1" style={{ 
+            overflowY: 'auto',
+            minHeight: '200px',
+            maxHeight: 'calc(100vh - 480px)'
+          }}>
             <BeautyScoreView clusteredColors={clusteredColors} />
+            <ColorSuggest clusteredColors={clusteredColors} munsellColors={munsellColors} />
           </div>
         </div>
       </div>
