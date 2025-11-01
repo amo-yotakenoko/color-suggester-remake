@@ -20,6 +20,7 @@ export default function App() {
   const [resumeKey, setResumeKey] = useState(0);
   const [progress, setProgress] = useState(0);
   const [munsellColors, setMunsellColors] = useState(null);
+  const [cameraRotation, setCameraRotation] = useState(90); // カメラの回転角度（90度がデフォルト）
 
   useEffect(() => {
     const base = process.env.PUBLIC_URL || '';
@@ -84,94 +85,157 @@ export default function App() {
 
   return (
     <div className="container-fluid vh-100 d-flex flex-column bg-dark text-light p-2">
-      {/* <h1 className="text-center mb-2">服色抽出</h1> */}
       <div className="row flex-grow-1 g-2" style={{ minHeight: '0' }}>
-        {/* 左側のカラム（カメラビューと設定） */}
-        <div className="col-6 d-flex flex-column" style={{ height: 'calc(100vh - 80px)' }}>
-          {/* 上部：カメラビュー */}
-          <div className="flex-grow-0" style={{ height: '60%' }}>
+        {/* 左側のカラム（マンセル色立体と美度） */}
+        <div className="col-4 d-flex flex-column" style={{ height: '100vh' }}>
+          {/* マンセル色立体 */}
+          <div className="rounded mb-2" style={{ 
+            flex: 3,
+            position: 'relative',
+            background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+          }}>
+            <div style={{ position: 'absolute', inset: 0 }}>
+              <MunsellCanvas extractedColors={clusteredColors} munsellColors={munsellColors} />
+            </div>
+          </div>
+          {/* 美度計算とサンプル */}
+          <div style={{ flex: 2 }}>
+            {/* 抽出色表示 */}
+            <div className="mb-2 p-3 rounded" style={{ 
+              background: 'linear-gradient(135deg, #2c3e50, #34495e)',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+            }}>
+              <ExtractedColorsView colors={clusteredColors} />
+            </div>
+            {/* 美度計算 */}
+            <div className="rounded" style={{ 
+              overflowY: 'auto',
+              maxHeight: 'calc(100% - 80px)'
+            }}>
+              <BeautyScoreView clusteredColors={clusteredColors} />
+            </div>
+          </div>
+        </div>
+
+        {/* 中央カラム（カメラビュー） */}
+        <div className="col-4 d-flex flex-column" style={{ height: '100vh' }}>
+          <div className="flex-grow-1 rounded overflow-hidden position-relative" style={{
+            background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+          }}>
             <video
               ref={videoRef}
               width={640}
               height={480}
               style={{ display: "none" }}
             />
-            <canvas ref={canvasRef} className="img-fluid rounded shadow-lg" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <canvas 
+              ref={canvasRef} 
+              className="position-absolute top-50 start-50 translate-middle" 
+              style={{
+                width: '100%',
+                height: 'auto',
+                transform: 'translate(-50%, -50%) rotate(90deg)',
+                maxHeight: '133.33%' // 4:3のアスペクト比を維持したまま90度回転
+              }}
+            />
           </div>
-          {/* 下部：設定パネル */}
-          <div className="flex-grow-1 p-2 bg-secondary rounded mt-2" style={{ height: '40%', overflowY: 'auto' }}>
-            <h2 className="h4">設定{`${isCapturing}`}</h2>
-            <div className="form-group">
-              <label htmlFor="maskAlph">マスクの透明度: {maskAlpha.toFixed(2)}</label>
-              <input
-                type="range"
-                id="maskAlpha"
-                className="form-control-range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={maskAlpha}
-                onChange={handleMaskAlphaChange}
-              />
+          {/* 設定パネル */}
+          <div className="mt-2 p-3 rounded" style={{ 
+            background: 'linear-gradient(135deg, #2c3e50, #34495e)',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h2 className="h5 text-white mb-3" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>
+              設定 {isCapturing && <span className="badge bg-info">抽出中</span>}
+            </h2>
+            <div className="row g-2">
+              <div className="col-4">
+                <label className="d-block text-white small mb-1">透明度: {maskAlpha.toFixed(2)}</label>
+                <input
+                  type="range"
+                  className="form-range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={maskAlpha}
+                  onChange={handleMaskAlphaChange}
+                />
+              </div>
+              <div className="col-4">
+                <label className="d-block text-white small mb-1">信頼度: {confidenceThreshold.toFixed(2)}</label>
+                <input
+                  type="range"
+                  className="form-range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={confidenceThreshold}
+                  onChange={handleConfidenceThresholdChange}
+                />
+              </div>
+              <div className="col-4">
+                <label className="d-block text-white small mb-1">カメラ回転</label>
+                <select 
+                  className="form-select form-select-sm"
+                  value={cameraRotation}
+                  onChange={(e) => setCameraRotation(Number(e.target.value))}
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    color: 'white',
+                    border: '1px solid rgba(255,255,255,0.2)'
+                  }}
+                >
+                  <option value="0">回転なし</option>
+                  <option value="90">90度</option>
+                  <option value="180">180度</option>
+                  <option value="270">270度</option>
+                </select>
+              </div>
             </div>
-            <div className="form-group mt-2">
-              <label htmlFor="confidenceThreshold">信頼度のしきい値: {confidenceThreshold.toFixed(2)}</label>
-              <input
-                type="range"
-                id="confidenceThreshold"
-                className="form-control-range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={confidenceThreshold}
-                onChange={handleConfidenceThresholdChange}
-              />
+            <div className="mt-2 d-flex gap-2 align-items-center">
+              <div style={{ flex: 1 }}>
+                <label className="d-block text-white small mb-1">色の数: {numColors}</label>
+                <input
+                  type="range"
+                  className="form-range"
+                  min="1"
+                  max="10"
+                  step="1"
+                  value={numColors}
+                  onChange={(e) => setNumColors(parseInt(e.target.value))}
+                />
+              </div>
+              <button
+                onClick={isPaused ? handleResume : handleCapture}
+                className={`btn ${isPaused ? 'btn-success' : 'btn-primary'}`}
+                style={{
+                  background: isPaused ? 'linear-gradient(135deg, #2ecc71, #27ae60)' : 'linear-gradient(135deg, #3498db, #2980b9)',
+                  border: 'none',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                  minWidth: '100px'
+                }}
+                disabled={isCapturing}
+              >
+                {isCapturing ? "抽出中..." : (isPaused ? "再開" : "抽出")}
+              </button>
             </div>
-            <div className="form-group mt-2">
-              <label htmlFor="numColors">抽出する色の数: {numColors}</label>
-              <input
-                type="range"
-                id="numColors"
-                className="form-control-range"
-                min="1"
-                max="10"
-                step="1"
-                value={numColors}
-                onChange={(e) => setNumColors(parseInt(e.target.value))}
-              />
-            </div>
-            <button
-              onClick={isPaused ? handleResume : handleCapture}
-              className={`btn ${isPaused ? 'btn-success' : 'btn-primary'} btn-lg w-100 mt-2`}
-              disabled={isCapturing}
-            >
-              {isCapturing ? "抽出中..." : (isPaused ? "再開" : "色を抽出")}
-            </button>
-            {isCapturing && <ProgressBar now={progress * 100} label={`${Math.round(progress * 100)}%`} className="mt-2" />}
+            {isCapturing && (
+              <div className="mt-2">
+                <ProgressBar 
+                  now={progress * 100} 
+                  label={`${Math.round(progress * 100)}%`}
+                  variant="info"
+                  style={{ height: '4px' }}
+                />
+              </div>
+            )}
           </div>
         </div>
-        
-        {/* 右側のカラム（マンセル色立体、抽出色、美度計算） */}
-        <div className="col-6 d-flex flex-column" style={{ height: 'calc(100vh - 80px)', gap: '8px' }}>
-          {/* 上部：マンセル色立体 */}
-          <div style={{ height: '300px', position: 'relative' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-              <MunsellCanvas extractedColors={clusteredColors} munsellColors={munsellColors} />
-            </div>
-          </div>
-          {/* 抽出色表示 */}
-          <div style={{ flexShrink: 0 }}>
-            <ExtractedColorsView colors={clusteredColors} />
-          </div>
-          {/* 下部：美度計算とカラーサジェスト（スクロール可能） */}
-          <div className="flex-grow-1" style={{ 
-            overflowY: 'auto',
-            minHeight: '200px',
-            maxHeight: 'calc(100vh - 480px)'
-          }}>
-            <BeautyScoreView clusteredColors={clusteredColors} />
-            <ColorSuggest clusteredColors={clusteredColors} munsellColors={munsellColors} />
-          </div>
+
+        {/* 右側のカラム（色の提案） */}
+        <div className="col-4" style={{ height: '100vh', overflowY: 'auto' }}>
+          <ColorSuggest clusteredColors={clusteredColors} munsellColors={munsellColors} />
         </div>
       </div>
       <ImageSegmentClothes
@@ -181,9 +245,10 @@ export default function App() {
         maskAlpha={maskAlpha}
         confidenceThreshold={confidenceThreshold}
         isCapturing={isCapturing}
-        setAllExtractedColors={setAllExtractedColors} // setAllExtractedColors を渡す
+        setAllExtractedColors={setAllExtractedColors}
         onCaptureFinished={onCaptureFinished}
         onProgress={setProgress}
+        rotation={cameraRotation}
       />
     </div>
   );

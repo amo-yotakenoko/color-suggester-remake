@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { OrbitControls, OrthographicCamera } from '@react-three/drei';
 import * as THREE from 'three';
 
 const MunsellColorSphere = ({ color, hvc }) => {
@@ -121,18 +121,21 @@ const ExtractedColors = ({ extractedColors, munsellData }) => {
 
 const MunsellCanvas = ({ extractedColors, munsellColors }) => {
     return (
-        <Canvas camera={{ position: [0, 0, 150] }} style={{ width: '100%', height: '100%' }}>
+        <Canvas style={{ width: '100%', height: '100%' }}>
+            <OrthographicCamera makeDefault position={[0, 50, 150]} zoom={10} />
             <ambientLight />
             <pointLight position={[10, 10, 10]} />
             <MunsellColors munsellColors={munsellColors || []} />
             {munsellColors && munsellColors.length > 0 && <SampleColors munsellData={munsellColors} />}
             {munsellColors && munsellColors.length > 0 && <ExtractedColors extractedColors={extractedColors} munsellData={munsellColors} />}
-            <OrbitControls 
-                enableDamping 
-                dampingFactor={0.2} 
-                enablePan={false} 
-                minDistance={50} 
-                maxDistance={200} 
+            <OrbitControls
+                autoRotate
+                autoRotateSpeed={5}
+                enableDamping
+                dampingFactor={0.2}
+                enablePan={false}
+                minDistance={50}
+                maxDistance={200}
             />
         </Canvas>
     );

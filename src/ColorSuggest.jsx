@@ -40,43 +40,47 @@ const ColorSuggest = ({ clusteredColors, munsellColors }) => {
   if (!currentBeauty) return null;
 
   return (
-    <div className="mt-4 p-4 bg-secondary rounded">
-      <h2 className="h4 text-center mb-3">色の提案</h2>
-      <table className="table table-sm table-striped text-center align-middle">
-        <thead>
-          <tr>
-            <th>色</th>
-            <th>サンプル</th>
-            <th>新しい美度</th>
-            <th>変化量</th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="mt-4 p-4 rounded" style={{ background: 'linear-gradient(135deg, #2c3e50, #3498db)' }}>
+      <h2 className="h4 text-center mb-3 text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>色の提案</h2>
+      <div className="container">
+        <div className="row g-3">
           {suggestions.map((suggestion) => (
-            <tr key={suggestion.name}>
-              <td>{suggestion.name}</td>
-              <td>
+            <div key={suggestion.name} className="col-2">
+              <div
+                className="position-relative"
+                style={{
+                  width: '100%',
+                  paddingBottom: '100%',
+                  background: `rgb(${suggestion.rgb.join(",")})`,
+                  borderRadius: '50%',
+                  border: '2px solid rgba(255,255,255,0.8)',
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s, box-shadow 0.2s'
+                }}
+                title={`新しい美度: ${suggestion.newBeauty.toFixed(3)}`}
+              >
                 <div
+                  className="position-absolute top-50 start-50 translate-middle text-center p-1"
                   style={{
-                    width: 20,
-                    height: 20,
-                    background: `rgb(${suggestion.rgb.join(",")})`,
-                    margin: "0 auto",
-                    border: "1px solid #ccc",
+                    color: suggestion.rgb.reduce((a, b) => a + b) > 382 ? '#000' : '#fff',
+                    fontWeight: 'bold',
+                    textShadow: suggestion.rgb.reduce((a, b) => a + b) > 382 
+                      ? '0 0 4px rgba(255,255,255,0.5)' 
+                      : '0 0 4px rgba(0,0,0,0.5)',
+
+                    borderRadius: '4px',
+                
+                    minWidth: '70%'
                   }}
-                />
-              </td>
-              <td>{suggestion.newBeauty.toFixed(3)}</td>
-              <td style={{ 
-                color: suggestion.difference > 0 ? '#98FB98' : 
-                       suggestion.difference < 0 ? '#FFA07A' : 'inherit'
-              }}>
-                {suggestion.difference > 0 ? '+' : ''}{suggestion.difference.toFixed(3)}
-              </td>
-            </tr>
+                >
+                  {suggestion.difference > 0 ? '+' : ''}{suggestion.difference.toFixed(3)}
+                </div>
+              </div>
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+      </div>
     </div>
   );
 };
