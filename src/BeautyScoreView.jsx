@@ -1,14 +1,8 @@
-import React, { useMemo } from "react";
+import React from "react";
 import "./BeautyScoreView.css";
-import { calculateBeautyDetails } from "./utils/beautyCalculator";
 
-const BeautyScoreView = ({ clusteredColors }) => {
-  const result = useMemo(
-    () => calculateBeautyDetails(clusteredColors),
-    [clusteredColors]
-  );
-
-  if (!result)
+const BeautyScoreView = ({ beautyScore }) => {
+  if (!beautyScore)
     return (
       <div className="mt-4 p-4 bg-secondary rounded text-center">
         <h2 className="h4">美度</h2>
@@ -17,7 +11,7 @@ const BeautyScoreView = ({ clusteredColors }) => {
       </div>
     );
 
-  const { beauty, complexity, pairDetails } = result;
+  const { beauty, complexity, pairDetails } = beautyScore;
 
   return (
     <div className="mt-4 p-4 bg-secondary rounded">

@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ExtractedColorsView = ({ colors }) => {
+const ExtractedColorsView = ({ colors, colorSize = 30 }) => {
   console.log("ExtractedColorsViewUpdate");
 
   if (!colors || colors.length === 0) {
@@ -28,8 +28,8 @@ const ExtractedColorsView = ({ colors }) => {
               key={index}
               className="position-relative m-1"
               style={{
-                width: '30px',  // サイズを少し小さく
-                height: '30px',
+                width: `${colorSize}px`,
+                height: `${colorSize}px`,
               }}
             >
               <div

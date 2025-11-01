@@ -61,7 +61,7 @@ const getSegmenter = async () => {
 };
 
 
-const ImageSegmentClothes = ({ videoRef, canvasRef, maskAlpha = 0.6, freqMs = 100, confidenceThreshold = 0.5, isCapturing, setAllExtractedColors, onCaptureFinished, onProgress, rotation = 90 }) => { // rotation パラメータを追加
+const ImageSegmentClothes = ({ videoRef, canvasRef, maskAlpha = 0.6, freqMs = 100, confidenceThreshold = 0.5, isCapturing, setAllExtractedColors, onCaptureFinished, onProgress, rotation = 90, isPaused }) => { // isPaused を追加
   const videoSegmenterRef = useRef(null);
   const imageSegmenterRef = useRef(null);
   const streamRef = useRef(null);
@@ -97,34 +97,6 @@ console.log("モデル初期化")
     };
   }, [videoRef]);
 
-  // キャンバスの回転設定を適用する関数
-  const applyCanvasRotation = (ctx, canvas, video, rotation) => {
-    if (rotation === 90) {
-      canvas.width = video.videoHeight;
-      canvas.height = video.videoWidth;
-      ctx.save();
-      ctx.translate(canvas.width, 0);
-      ctx.rotate(90 * Math.PI / 180);
-    } else if (rotation === 180) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.save();
-      ctx.translate(canvas.width, canvas.height);
-      ctx.rotate(180 * Math.PI / 180);
-    } else if (rotation === 270) {
-      canvas.width = video.videoHeight;
-      canvas.height = video.videoWidth;
-      ctx.save();
-      ctx.translate(0, canvas.height);
-      ctx.rotate(270 * Math.PI / 180);
-    } else {
-      // 回転なし
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.save();
-    }
-  };
-
   // Effect for rendering loop
   useEffect(() => {
     let lastRun = 0;
@@ -132,24 +104,13 @@ console.log("モデル初期化")
     let mounted = true;
 
     const renderLoop = async (now) => {
-      if (!mounted || !videoRef.current || !canvasRef.current || !videoSegmenterRef.current) {
+      if (isPaused || !mounted || !videoRef.current || !canvasRef.current || !videoSegmenterRef.current) {
         if(mounted) animationFrameId = requestAnimationFrame(renderLoop);
         return;
       }
       
       const video = videoRef.current;
-      if (video.ended) {
-        animationFrameId = requestAnimationFrame(renderLoop);
-        return;
-      }
-      
-      // キャプチャモード中は更新を停止
-      if (captureModeRef.current) {
-        animationFrameId = requestAnimationFrame(renderLoop);
-        return;
-      }
-      
-      if (video.paused) {
+      if (video.paused || video.ended) {
         animationFrameId = requestAnimationFrame(renderLoop);
         return;
       }
@@ -159,7 +120,6 @@ console.log("モデル初期化")
         lastRun = now;
         
         try {
-          // 元の向きのままセグメンテーションを実行
           const res = videoSegmenterRef.current.segmentForVideo(video, now);
           const canvas = canvasRef.current;
           const ctx = canvas.getContext("2d");
@@ -256,7 +216,7 @@ console.log("モデル初期化")
       }
       cancelAnimationFrame(animationFrameId);
     };
-  }, [videoRef, canvasRef, maskAlpha, freqMs, confidenceThreshold, rotation]);
+  }, [videoRef, canvasRef, maskAlpha, freqMs, confidenceThreshold, rotation, isPaused]);
 
  useEffect(() => {
   const process = async () => {
@@ -269,14 +229,12 @@ console.log("モデル初期化")
       imageSegmenterRef.current
     ) {
       captureModeRef.current = true;
-      // カメラは停止せず、videoのみ一時停止
       const video = videoRef.current;
-      video.pause(); // ビデオを一時停止
+      video.pause();
 
       const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
 
-      // 元の向きのままImageDataを取得
       const tempCanvas = document.createElement("canvas");
       tempCanvas.width = video.videoWidth;
       tempCanvas.height = video.videoHeight;
@@ -284,18 +242,7 @@ console.log("モデル初期化")
       tempCtx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
       const originalImageData = tempCtx.getImageData(0, 0, video.videoWidth, video.videoHeight);
 
-      // 回転済みの画像でセグメンテーションを実行
       const res = imageSegmenterRef.current.segment(originalImageData);
-
-      // キャンバスのサイズを設定
-      if (rotation === 90 || rotation === 270) {
-        canvas.width = video.videoHeight;
-        canvas.height = video.videoWidth;
-      } else {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-      }
-      ctx.drawImage(tempCanvas, 0, 0);
 
       const CLOTHES_CLASS = 4;
       const clothesConfidenceMask = res.confidenceMasks && res.confidenceMasks[CLOTHES_CLASS];
@@ -307,63 +254,89 @@ console.log("モデル初期化")
         let localColors = [];
 
         if (maskArray) {
-          // 🚀 高速化：ランダム100pxずつ抽出して都度更新
+          const out = new Uint8ClampedArray(mw * mh * 4);
+          for (let i = 0, j = 0; i < maskArray.length; i++, j += 4) {
+            const confidence = maskArray[i];
+            if (confidence > confidenceThreshold) {
+              out[j] = originalImageData.data[j];
+              out[j + 1] = originalImageData.data[j + 1];
+              out[j + 2] = originalImageData.data[j + 2];
+              out[j + 3] = 255;
+            } else {
+              const darkenFactor = 0.3;
+              out[j] = originalImageData.data[j] * darkenFactor;
+              out[j + 1] = originalImageData.data[j + 1] * darkenFactor;
+              out[j + 2] = originalImageData.data[j + 2] * darkenFactor;
+              out[j + 3] = Math.floor(maskAlpha * 255);
+            }
+          }
+          const imageData = new ImageData(out, mw, mh);
+          
+          // 回転を適用して描画
+          if (rotation === 90 || rotation === 270) {
+            canvas.width = video.videoHeight;
+            canvas.height = video.videoWidth;
+          } else {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+          }
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.save();
+          if (rotation === 90) {
+            ctx.translate(canvas.width, 0);
+            ctx.rotate(90 * Math.PI / 180);
+          } else if (rotation === 180) {
+            ctx.translate(canvas.width, canvas.height);
+            ctx.rotate(180 * Math.PI / 180);
+          } else if (rotation === 270) {
+            ctx.translate(0, canvas.height);
+            ctx.rotate(270 * Math.PI / 180);
+          }
+          ctx.drawImage(await createImageBitmap(imageData), 0, 0, video.videoWidth, video.videoHeight);
+          ctx.restore();
+
          const processMask = () => new Promise((resolve) => {
-  const totalPixels = maskArray.length;
-  const sampleCount = 20000; // 2000ピクセルだけサンプリング（約0.1%）
-  let sampled = 0;
+            const totalPixels = maskArray.length;
+            const sampleCount = 20000; 
+            let sampled = 0;
 
-  // 事前にランダムインデックスをまとめて作る（高速）
-  const indices = new Uint32Array(sampleCount);
-  for (let i = 0; i < sampleCount; i++) {
-    indices[i] = Math.floor(Math.random() * totalPixels);
-  }
+            const indices = new Uint32Array(sampleCount);
+            for (let i = 0; i < sampleCount; i++) {
+              indices[i] = Math.floor(Math.random() * totalPixels);
+            }
 
-  for (let n = 0; n < sampleCount; n++) {
-    const i = indices[n];
-    const j = i * 4;
-    const confidence = maskArray[i];
-    if (confidence > confidenceThreshold) {
-      const r = originalImageData.data[j];
-      const g = originalImageData.data[j + 1];
-      const b = originalImageData.data[j + 2];
-      localColors.push([r, g, b]);
-    }
-    sampled++;
-    if (sampled % 100 === 0) {
-      setAllExtractedColors([...localColors]);
-    }
-  }
+            for (let n = 0; n < sampleCount; n++) {
+              const i = indices[n];
+              const j = i * 4;
+              const confidence = maskArray[i];
+              if (confidence > confidenceThreshold) {
+                const r = originalImageData.data[j];
+                const g = originalImageData.data[j + 1];
+                const b = originalImageData.data[j + 2];
+                localColors.push([r, g, b]);
+              }
+              sampled++;
+              if (sampled % 100 === 0) {
+                setAllExtractedColors([...localColors]);
+              }
+            }
 
-  resolve();
-});
+            resolve();
+          });
 
           await processMask();
           console.log(`抽出終了 色数: ${localColors.length}`);
           onCaptureFinished();
-          captureModeRef.current = false; // 抽出完了後にキャプチャモードを解除
         } else {
           onCaptureFinished();
-          captureModeRef.current = false;
         }
       } else {
-        onCaptureFinished(); // No clothes detected
-        captureModeRef.current = false;
+        onCaptureFinished();
       }
-    } else if (!isCapturing && videoRef.current && !videoRef.current.ended) {
-      // 抽出モードが解除されたら再開
-      captureModeRef.current = false;
-      const video = videoRef.current;
-      if (video.paused) {
-        video.play().catch(e => console.error('Failed to resume video:', e));
-      }
-    } else {
-      onCaptureFinished(); // 条件未満時
-      captureModeRef.current = false;
-    }
+    } 
   };
   process();
-}, [isCapturing, onProgress, setAllExtractedColors]);
+}, [isCapturing, onProgress, setAllExtractedColors, onCaptureFinished, rotation, confidenceThreshold, maskAlpha]);
 
     
   return null;

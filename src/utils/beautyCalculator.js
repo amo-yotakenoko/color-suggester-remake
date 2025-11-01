@@ -149,3 +149,12 @@ export function calculateBeautyDetails(clusteredColors) {
 
   return { beauty, complexity, pairDetails };
 }
+
+
+function beautyToPoint(x) {
+  const a = 0.5;
+  return 100 * x / (x + a);
+  
+
+}
+export default beautyToPoint;

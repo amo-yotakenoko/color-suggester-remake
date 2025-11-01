@@ -7,7 +7,8 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import { extractDominantColorsKMeans } from "./k-means";
 import BeautyScoreView from "./BeautyScoreView";
 import ColorSuggest from "./ColorSuggest";
-
+import { calculateBeautyDetails } from "./utils/beautyCalculator";
+import beautyToPoint from "./utils/beautyCalculator";
 export default function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -21,6 +22,8 @@ export default function App() {
   const [progress, setProgress] = useState(0);
   const [munsellColors, setMunsellColors] = useState(null);
   const [cameraRotation, setCameraRotation] = useState(90); // カメラの回転角度（90度がデフォルト）
+  const [isPaused, setIsPaused] = useState(false);
+  const [beautyScore, setBeautyScore] = useState(null);
 
   useEffect(() => {
     const base = process.env.PUBLIC_URL || '';
@@ -65,12 +68,15 @@ export default function App() {
 
   const onCaptureFinished = () => {
     setIsCapturing(false);
+    setIsPaused(true);
   };
 
   const handleResume = () => {
     setAllExtractedColors([]);
     setClusteredColors([]);
     setResumeKey(prevKey => prevKey + 1);
+    setIsPaused(false);
+    setBeautyScore(null);
   };
 
   // allExtractedColors または numColors が変更されたときにクラスタリングを再実行
@@ -81,13 +87,20 @@ export default function App() {
     }
   }, [allExtractedColors, numColors]);
 
-  const isPaused = allExtractedColors.length > 0; // 抽出された色があるかどうかで一時停止状態を判断
+  useEffect(() => {
+    if (clusteredColors.length > 1) {
+      const score = calculateBeautyDetails(clusteredColors);
+      setBeautyScore(score);
+    } else {
+      setBeautyScore(null);
+    }
+  }, [clusteredColors]);
 
   return (
     <div className="container-fluid vh-100 d-flex flex-column bg-dark text-light p-2">
-      <div className="row flex-grow-1 g-2" style={{ minHeight: '0' }}>
+      <div className="row flex-grow-1 g-2 h-100" style={{ minHeight: '0' }}>
         {/* 左側のカラム（マンセル色立体と美度） */}
-        <div className="col-4 d-flex flex-column" style={{ height: '100vh' }}>
+        <div className="col-4 d-flex flex-column">
           {/* マンセル色立体 */}
           <div className="rounded mb-2" style={{ 
             flex: 3,
@@ -96,30 +109,23 @@ export default function App() {
             boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
           }}>
             <div style={{ position: 'absolute', inset: 0 }}>
-              <MunsellCanvas extractedColors={clusteredColors} munsellColors={munsellColors} />
+              <MunsellCanvas extractedColors={clusteredColors} munsellColors={munsellColors} isPaused={isPaused} />
             </div>
           </div>
           {/* 美度計算とサンプル */}
           <div style={{ flex: 2 }}>
-            {/* 抽出色表示 */}
-            <div className="mb-2 p-3 rounded" style={{ 
-              background: 'linear-gradient(135deg, #2c3e50, #34495e)',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-            }}>
-              <ExtractedColorsView colors={clusteredColors} />
-            </div>
             {/* 美度計算 */}
             <div className="rounded" style={{ 
               overflowY: 'auto',
               maxHeight: 'calc(100% - 80px)'
             }}>
-              <BeautyScoreView clusteredColors={clusteredColors} />
+              <BeautyScoreView beautyScore={beautyScore} />
             </div>
           </div>
         </div>
 
         {/* 中央カラム（カメラビュー） */}
-        <div className="col-4 d-flex flex-column" style={{ height: '100vh' }}>
+        <div className="col-4 d-flex flex-column">
           <div className="flex-grow-1 rounded overflow-hidden position-relative" style={{
             background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
             boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
@@ -140,6 +146,37 @@ export default function App() {
                 maxHeight: '133.33%' // 4:3のアスペクト比を維持したまま90度回転
               }}
             />
+            {clusteredColors && clusteredColors.length > 0 && (
+              <div
+                className="position-absolute bottom-0 start-50 translate-middle-x text-white p-2"
+                style={{
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  borderRadius: '10px 10px 0 0',
+                  textShadow: '2px 2px 4px rgba(0,0,0,0.7)',
+                  paddingTop: '0.5rem',
+                  paddingBottom: '0.5rem',
+                  marginBottom: '5rem' // Adjust this value to position it above the beauty score
+                }}
+              >
+                <ExtractedColorsView colors={clusteredColors} colorSize={50} />
+              </div>
+            )}
+            {beautyScore && (
+              <div 
+                className="position-absolute bottom-0 start-50 translate-middle-x text-white p-2"
+                style={{
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  borderRadius: '10px',
+                  textShadow: '2px 2px 4px rgba(0,0,0,0.7)',
+                  fontSize: '2.5rem',
+                  fontWeight: 'bold',
+                  lineHeight: 1,
+                  marginBottom: '1rem'
+                }}
+              >
+                {beautyToPoint(beautyScore.beauty).toFixed(3)}点
+              </div>
+            )}
           </div>
           {/* 設定パネル */}
           <div className="mt-2 p-3 rounded" style={{ 
@@ -234,7 +271,7 @@ export default function App() {
         </div>
 
         {/* 右側のカラム（色の提案） */}
-        <div className="col-4" style={{ height: '100vh', overflowY: 'auto' }}>
+        <div className="col-4 h-100" style={{ overflowY: 'auto' }}>
           <ColorSuggest clusteredColors={clusteredColors} munsellColors={munsellColors} />
         </div>
       </div>
@@ -249,9 +286,8 @@ export default function App() {
         onCaptureFinished={onCaptureFinished}
         onProgress={setProgress}
         rotation={cameraRotation}
+        isPaused={isPaused}
       />
     </div>
   );
 }
-
-

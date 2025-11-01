@@ -119,7 +119,7 @@ const ExtractedColors = ({ extractedColors, munsellData }) => {
 };
 
 
-const MunsellCanvas = ({ extractedColors, munsellColors }) => {
+const MunsellCanvas = ({ extractedColors, munsellColors, isPaused }) => {
     return (
         <Canvas style={{ width: '100%', height: '100%' }}>
             <OrthographicCamera makeDefault position={[0, 50, 150]} zoom={10} />
@@ -129,7 +129,7 @@ const MunsellCanvas = ({ extractedColors, munsellColors }) => {
             {munsellColors && munsellColors.length > 0 && <SampleColors munsellData={munsellColors} />}
             {munsellColors && munsellColors.length > 0 && <ExtractedColors extractedColors={extractedColors} munsellData={munsellColors} />}
             <OrbitControls
-                autoRotate
+                autoRotate={!isPaused}
                 autoRotateSpeed={5}
                 enableDamping
                 dampingFactor={0.2}
